@@ -810,7 +810,9 @@
               </select>
             </div>
             <div class="flex gap-3 flex-wrap">
-              <button id="donExportCsv" class="w-full sm:w-auto px-4 py-2 bg-[var(--primary-color)] text-white rounded-lg hover:bg-[#5A204A] transition">Export CSV</button>
+              <button id="donSelectAll" class="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">Select All</button>
+              <button id="donDeselectAll" class="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">Deselect All</button>
+              <button id="donExportCsv" class="w-full sm:w-auto px-4 py-2 bg-[var(--primary-color)] text-white rounded-lg hover:bg-[#5A204A] transition">Export Selected CSV</button>
               <button id="donBackupBtn" class="w-full sm:w-auto px-4 py-2 bg-[var(--accent-color)] text-[var(--primary-color)] rounded-lg hover:bg-[#F0E68C] transition">Backup</button>
             </div>
           </div>
@@ -818,6 +820,9 @@
             <table class="w-full table-auto">
               <thead>
                 <tr class="text-sm text-gray-600 bg-gray-50">
+                  <th class="py-4 px-4 text-left font-medium">
+                    <input type="checkbox" id="donSelectAllCheckbox" class="w-4 h-4 text-[var(--primary-color)] bg-white border-gray-300 rounded focus:ring-[var(--accent-color)] focus:ring-2">
+                  </th>
                   <th class="py-4 px-4 text-left font-medium">Donor</th>
                   <th class="py-4 px-4 text-left font-medium">Event</th>
                   <th class="py-4 px-4 text-left font-medium">Date</th>
@@ -925,7 +930,9 @@
               </select>
             </div>
             <div class="flex gap-3 flex-wrap">
-              <button id="expExportCsv" class="w-full sm:w-auto px-4 py-2 bg-[var(--primary-color)] text-white rounded-lg hover:bg-[#5A204A] transition">Export CSV</button>
+              <button id="expSelectAll" class="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">Select All</button>
+              <button id="expDeselectAll" class="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">Deselect All</button>
+              <button id="expExportCsv" class="w-full sm:w-auto px-4 py-2 bg-[var(--primary-color)] text-white rounded-lg hover:bg-[#5A204A] transition">Export Selected CSV</button>
               <button id="expBackupBtn" class="w-full sm:w-auto px-4 py-2 bg-[var(--accent-color)] text-[var(--primary-color)] rounded-lg hover:bg-[#F0E68C] transition">Backup</button>
             </div>
           </div>
@@ -933,6 +940,9 @@
             <table class="w-full table-auto">
               <thead>
                 <tr class="text-sm text-gray-600 bg-gray-50">
+                  <th class="py-4 px-4 text-left font-medium">
+                    <input type="checkbox" id="expSelectAllCheckbox" class="w-4 h-4 text-[var(--primary-color)] bg-white border-gray-300 rounded focus:ring-[var(--accent-color)] focus:ring-2">
+                  </th>
                   <th class="py-4 px-4 text-left font-medium">Recipient</th>
                   <th class="py-4 px-4 text-left font-medium">Purpose</th>
                   <th class="py-4 px-4 text-left font-medium">Date</th>
@@ -1037,6 +1047,9 @@
     const donFilterSel = document.getElementById('donFilterStatus');
     const donExportBtn = document.getElementById('donExportCsv');
     const donBackupBtn = document.getElementById('donBackupBtn');
+    const donSelectAllBtn = document.getElementById('donSelectAll');
+    const donDeselectAllBtn = document.getElementById('donDeselectAll');
+    const donSelectAllCheckbox = document.getElementById('donSelectAllCheckbox');
 
     // Expenses variables
     const expForm = document.getElementById('expenseForm');
@@ -1066,6 +1079,9 @@
     const expFilterSel = document.getElementById('expFilterStatus');
     const expExportBtn = document.getElementById('expExportCsv');
     const expBackupBtn = document.getElementById('expBackupBtn');
+    const expSelectAllBtn = document.getElementById('expSelectAll');
+    const expDeselectAllBtn = document.getElementById('expDeselectAll');
+    const expSelectAllCheckbox = document.getElementById('expSelectAllCheckbox');
 
     // Shared modal
     const previewModal = document.getElementById('previewModal');
@@ -1097,6 +1113,8 @@
     let expSearchText = '';
     let currentItem = null;
     let currentType = null;
+    let selectedDonations = new Set();
+    let selectedExpenses = new Set();
 
     donEventDate.valueAsDate = new Date();
     expDate.valueAsDate = new Date();
@@ -1279,7 +1297,11 @@
     const file = new File([blob], 'JainMandirReceipt.pdf', { type: 'application/pdf' });
 
     const recipientName = currentType === 'donation' ? currentItem.donor : currentItem.recipient;
-    const message = `जय जिनेन्द्र 🙏\nआदरणीय ${recipientName}\nकृपया ${currentType === 'donation' ? 'दान' : 'व्यय'} की रसीद प्राप्त करें,\nसादर,\nश्री दिगम्बर जैन भगवान शांतिनाथ प्रभावना समिति`;
+    const message = `जय जिनेन्द्र 🙏
+आदरणीय ${recipientName}
+कृपया ${currentType === 'donation' ? 'दान' : 'व्यय'} की रसीद प्राप्त करें,
+सादर,
+श्री दिगम्बर जैन भगवान शांतिनाथ प्रभावना समिति`;
 
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
@@ -1377,6 +1399,7 @@
       donTbody.innerHTML = '';
       if (view.length === 0) {
         donEmpty.classList.remove('hidden');
+        updateDonationSelectAllCheckbox();
         return;
       }
       donEmpty.classList.add('hidden');
@@ -1384,6 +1407,9 @@
         const tr = document.createElement('tr');
         tr.className = 'border-t border-gray-200 hover:bg-gray-50 transition';
         tr.innerHTML = `
+          <td class="py-4 px-4">
+            <input type="checkbox" class="donation-checkbox w-4 h-4 text-[var(--primary-color)] bg-white border-gray-300 rounded focus:ring-[var(--accent-color)] focus:ring-2" data-id="${d._id}" ${selectedDonations.has(d._id) ? 'checked' : ''}>
+          </td>
           <td class="py-4 px-4 font-medium">${escapeHtml(d.donor)}</td>
           <td class="py-4 px-4">${escapeHtml(d.eventName || 'None')}</td>
           <td class="py-4 px-4">${escapeHtml(new Date(d.eventDate).toISOString().split('T')[0])}</td>
@@ -1405,6 +1431,7 @@
         `;
         donTbody.appendChild(tr);
       }
+      updateDonationSelectAllCheckbox();
     }
 
     function renderExpenses() {
@@ -1423,6 +1450,7 @@
       expTbody.innerHTML = '';
       if (view.length === 0) {
         expEmpty.classList.remove('hidden');
+        updateExpenseSelectAllCheckbox();
         return;
       }
       expEmpty.classList.add('hidden');
@@ -1430,6 +1458,9 @@
         const tr = document.createElement('tr');
         tr.className = 'border-t border-gray-200 hover:bg-gray-50 transition';
         tr.innerHTML = `
+          <td class="py-4 px-4">
+            <input type="checkbox" class="expense-checkbox w-4 h-4 text-[var(--primary-color)] bg-white border-gray-300 rounded focus:ring-[var(--accent-color)] focus:ring-2" data-id="${e._id}" ${selectedExpenses.has(e._id) ? 'checked' : ''}>
+          </td>
           <td class="py-4 px-4 font-medium">${escapeHtml(e.recipient)}</td>
           <td class="py-4 px-4">${escapeHtml(e.purpose || 'None')}</td>
           <td class="py-4 px-4">${escapeHtml(new Date(e.date).toISOString().split('T')[0])}</td>
@@ -1451,6 +1482,7 @@
         `;
         expTbody.appendChild(tr);
       }
+      updateExpenseSelectAllCheckbox();
     }
 
     function escapeHtml(s) {
@@ -1621,20 +1653,30 @@ function donClearErrors() {
     donSearch.addEventListener('input', () => {
       donSearchText = donSearch.value;
       renderDonations();
+      updateDonationSelectAllCheckbox();
     });
 
     donFilterSel.addEventListener('change', () => {
       donFilterStatus = donFilterSel.value;
       renderDonations();
+      updateDonationSelectAllCheckbox();
     });
 
     donExportBtn.addEventListener('click', () => {
-      if (!donations.length) {
+      const selectedData = selectedDonations.size > 0 
+        ? donations.filter(d => selectedDonations.has(d._id))
+        : donations;
+      
+      if (!selectedData.length) {
         alert('No data to export');
         return;
       }
-      const csv = toCsv(donations, 'donation');
-      download('temple-donations.csv', csv, 'text/csv;charset=utf-8');
+      
+      const csv = toCsv(selectedData, 'donation');
+      const filename = selectedDonations.size > 0 
+        ? `temple-donations-selected-${selectedDonations.size}.csv`
+        : 'temple-donations.csv';
+      download(filename, csv, 'text/csv;charset=utf-8');
     });
 
     donBackupBtn.addEventListener('click', async () => {
@@ -1806,20 +1848,30 @@ function donClearErrors() {
     expSearch.addEventListener('input', () => {
       expSearchText = expSearch.value;
       renderExpenses();
+      updateExpenseSelectAllCheckbox();
     });
 
     expFilterSel.addEventListener('change', () => {
       expFilterStatus = expFilterSel.value;
       renderExpenses();
+      updateExpenseSelectAllCheckbox();
     });
 
     expExportBtn.addEventListener('click', () => {
-      if (!expenses.length) {
+      const selectedData = selectedExpenses.size > 0 
+        ? expenses.filter(e => selectedExpenses.has(e._id))
+        : expenses;
+      
+      if (!selectedData.length) {
         alert('No data to export');
         return;
       }
-      const csv = toCsv(expenses, 'expense');
-      download('temple-expenses.csv', csv, 'text/csv;charset=utf-8');
+      
+      const csv = toCsv(selectedData, 'expense');
+      const filename = selectedExpenses.size > 0 
+        ? `temple-expenses-selected-${selectedExpenses.size}.csv`
+        : 'temple-expenses.csv';
+      download(filename, csv, 'text/csv;charset=utf-8');
     });
 
     expBackupBtn.addEventListener('click', async () => {
@@ -1890,6 +1942,150 @@ function donClearErrors() {
 
     fetchDonations();
     fetchExpenses();
+
+    // Donations selection functionality
+    donSelectAllBtn.addEventListener('click', () => {
+      const visibleDonations = donations.filter(d => {
+        const okStatus = donFilterStatus === 'all' ? true : d.status === donFilterStatus;
+        const q = donSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (d.donor.toLowerCase().includes(q) || (d.eventName || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      visibleDonations.forEach(d => selectedDonations.add(d._id));
+      renderDonations();
+      updateDonationSelectAllCheckbox();
+    });
+
+    donDeselectAllBtn.addEventListener('click', () => {
+      selectedDonations.clear();
+      renderDonations();
+      updateDonationSelectAllCheckbox();
+    });
+
+    donSelectAllCheckbox.addEventListener('change', (e) => {
+      const visibleDonations = donations.filter(d => {
+        const okStatus = donFilterStatus === 'all' ? true : d.status === donFilterStatus;
+        const q = donSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (d.donor.toLowerCase().includes(q) || (d.eventName || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      if (e.target.checked) {
+        visibleDonations.forEach(d => selectedDonations.add(d._id));
+      } else {
+        visibleDonations.forEach(d => selectedDonations.delete(d._id));
+      }
+      renderDonations();
+    });
+
+    // Handle individual donation checkboxes
+    donTbody.addEventListener('change', (e) => {
+      if (e.target.classList.contains('donation-checkbox')) {
+        const id = e.target.dataset.id;
+        if (e.target.checked) {
+          selectedDonations.add(id);
+        } else {
+          selectedDonations.delete(id);
+        }
+        updateDonationSelectAllCheckbox();
+      }
+    });
+
+    function updateDonationSelectAllCheckbox() {
+      const visibleDonations = donations.filter(d => {
+        const okStatus = donFilterStatus === 'all' ? true : d.status === donFilterStatus;
+        const q = donSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (d.donor.toLowerCase().includes(q) || (d.eventName || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      const visibleIds = visibleDonations.map(d => d._id);
+      const selectedVisible = visibleIds.filter(id => selectedDonations.has(id));
+      
+      if (selectedVisible.length === 0) {
+        donSelectAllCheckbox.checked = false;
+        donSelectAllCheckbox.indeterminate = false;
+      } else if (selectedVisible.length === visibleIds.length) {
+        donSelectAllCheckbox.checked = true;
+        donSelectAllCheckbox.indeterminate = false;
+      } else {
+        donSelectAllCheckbox.checked = false;
+        donSelectAllCheckbox.indeterminate = true;
+      }
+    }
+
+    // Expenses selection functionality
+    expSelectAllBtn.addEventListener('click', () => {
+      const visibleExpenses = expenses.filter(e => {
+        const okStatus = expFilterStatus === 'all' ? true : e.status === expFilterStatus;
+        const q = expSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (e.recipient.toLowerCase().includes(q) || (e.purpose || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      visibleExpenses.forEach(e => selectedExpenses.add(e._id));
+      renderExpenses();
+      updateExpenseSelectAllCheckbox();
+    });
+
+    expDeselectAllBtn.addEventListener('click', () => {
+      selectedExpenses.clear();
+      renderExpenses();
+      updateExpenseSelectAllCheckbox();
+    });
+
+    expSelectAllCheckbox.addEventListener('change', (e) => {
+      const visibleExpenses = expenses.filter(exp => {
+        const okStatus = expFilterStatus === 'all' ? true : exp.status === expFilterStatus;
+        const q = expSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (exp.recipient.toLowerCase().includes(q) || (exp.purpose || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      if (e.target.checked) {
+        visibleExpenses.forEach(exp => selectedExpenses.add(exp._id));
+      } else {
+        visibleExpenses.forEach(exp => selectedExpenses.delete(exp._id));
+      }
+      renderExpenses();
+    });
+
+    // Handle individual expense checkboxes
+    expTbody.addEventListener('change', (e) => {
+      if (e.target.classList.contains('expense-checkbox')) {
+        const id = e.target.dataset.id;
+        if (e.target.checked) {
+          selectedExpenses.add(id);
+        } else {
+          selectedExpenses.delete(id);
+        }
+        updateExpenseSelectAllCheckbox();
+      }
+    });
+
+    function updateExpenseSelectAllCheckbox() {
+      const visibleExpenses = expenses.filter(e => {
+        const okStatus = expFilterStatus === 'all' ? true : e.status === expFilterStatus;
+        const q = expSearchText.trim().toLowerCase();
+        const okSearch = !q ? true : (e.recipient.toLowerCase().includes(q) || (e.purpose || '').toLowerCase().includes(q));
+        return okStatus && okSearch;
+      });
+      
+      const visibleIds = visibleExpenses.map(e => e._id);
+      const selectedVisible = visibleIds.filter(id => selectedExpenses.has(id));
+      
+      if (selectedVisible.length === 0) {
+        expSelectAllCheckbox.checked = false;
+        expSelectAllCheckbox.indeterminate = false;
+      } else if (selectedVisible.length === visibleIds.length) {
+        expSelectAllCheckbox.checked = true;
+        expSelectAllCheckbox.indeterminate = false;
+      } else {
+        expSelectAllCheckbox.checked = false;
+        expSelectAllCheckbox.indeterminate = true;
+      }
+    }
   });
 </script>
 </body>
